@@ -72,19 +72,10 @@ public class AsyncURLDownloadServlet extends HttpServlet {
         jobs.add(asyncContext);
     }
 
-    private static void runJob(AsyncContext asyncContext) throws IOException{
-        //logger.info("Hit runJob() in URL Download Servlet");
-        String downloadURL = asyncContext.getRequest().getParameter("url");
-        CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
-        HttpGet httpGet = new HttpGet(downloadURL);
-        HttpResponse httpResponse;
-        BufferedReader br = null;
-        PrintWriter out = asyncContext.getResponse().getWriter();
-        try {
-            httpResponse = closeableHttpClient.execute(httpGet);
-            int responseStatus = httpResponse.getStatusLine().getStatusCode();
-            br = new BufferedReader(new InputStreamReader(httpResponse.getEntity()
-                    .getContent()));
+    private static void writeResponse(HttpResponse httpResponse, PrintWriter out) throws IOException{
+        int responseStatus = httpResponse.getStatusLine().getStatusCode();
+        try(BufferedReader br = new BufferedReader(new InputStreamReader(httpResponse.getEntity()
+                .getContent()))) {
             if (responseStatus >= 200 && responseStatus < 300) {
                 String line;
                 while ((line = br.readLine()) != null) {
@@ -93,16 +84,21 @@ public class AsyncURLDownloadServlet extends HttpServlet {
             } else {
                 out.println("Unexpected Response Code: " + responseStatus);
             }
+        }
+    }
+
+    private static void runJob(AsyncContext asyncContext) throws IOException{
+        String downloadURL = asyncContext.getRequest().getParameter("url");
+        CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
+        HttpGet httpGet = new HttpGet(downloadURL);
+        HttpResponse httpResponse;
+        PrintWriter out = asyncContext.getResponse().getWriter();
+        try {
+            httpResponse = closeableHttpClient.execute(httpGet);
+            writeResponse(httpResponse, out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
             closeableHttpClient.close();
             out.flush();
             asyncContext.complete();
