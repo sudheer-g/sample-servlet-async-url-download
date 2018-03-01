@@ -52,12 +52,10 @@ public class AsyncURLDownloadServlet extends HttpServlet {
         for (int i=0 ;i< numberOfThreads; i++) {
             executorService.submit(new JobsExecutor());
         }
-        //logger.info("Exit URL Download Servlet Init()");
     }
 
     @Override
     public void destroy() {
-        //logger.info("Hit URL Download Servlet destroy()");
         executorService.shutdownNow();   // Need to wait for completion before force shut down.
         logger.info("Executor Service Shut down status: {}", executorService.isShutdown());
     }
@@ -83,21 +81,15 @@ public class AsyncURLDownloadServlet extends HttpServlet {
         BufferedReader br = null;
         PrintWriter out = asyncContext.getResponse().getWriter();
         try {
-            //logger.info("Inside URL Download");
             httpResponse = closeableHttpClient.execute(httpGet);
-            //logger.info("Got httpResponse");
             int responseStatus = httpResponse.getStatusLine().getStatusCode();
-            //logger.info("Got responseStatus");
             br = new BufferedReader(new InputStreamReader(httpResponse.getEntity()
                     .getContent()));
             if (responseStatus >= 200 && responseStatus < 300) {
                 String line;
-                //Not thread safe????.
                 while ((line = br.readLine()) != null) {
-                    //logger.debug(line);
                     out.println(line);
                 }
-                //out.println("200 Response Code OK");
             } else {
                 out.println("Unexpected Response Code: " + responseStatus);
             }
@@ -114,7 +106,6 @@ public class AsyncURLDownloadServlet extends HttpServlet {
             closeableHttpClient.close();
             out.flush();
             asyncContext.complete();
-            //logger.info("Exiting runJob() method");
         }
     }
 
@@ -125,7 +116,6 @@ public class AsyncURLDownloadServlet extends HttpServlet {
      static class JobsExecutor implements Runnable {
         @Override
         public void run() {
-            //logger.info("Hit JobsExecutor thread in URL Download servlet");
             while (true) {
                 try {
                     AsyncContext asyncContext = takeJobFromQueue();
