@@ -20,7 +20,7 @@ import java.io.PrintWriter;
 import java.util.Queue;
 import java.util.concurrent.*;
 
-@WebServlet(name = "AsyncURLDownload", urlPatterns = "/nonBlocking", asyncSupported = true, loadOnStartup = 1)
+@WebServlet(name = "AsyncURLDownload", urlPatterns = "/async", asyncSupported = true, loadOnStartup = 1)
 public class AsyncURLDownloadServlet extends HttpServlet {
     private static final Logger logger = LogManager.getLogger();
 
@@ -30,7 +30,6 @@ public class AsyncURLDownloadServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
-        logger.info("Hit URL Download Servlet Init()");
         int numberOfThreads = 2;
         executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
                 0L, TimeUnit.MILLISECONDS,
@@ -45,7 +44,6 @@ public class AsyncURLDownloadServlet extends HttpServlet {
         }) {
             @Override
             protected void afterExecute(Runnable r, Throwable t) {
-                System.out.println("After execute");
                 t.printStackTrace();
             }
         };
@@ -64,11 +62,9 @@ public class AsyncURLDownloadServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         final AsyncContext asyncContext = req.startAsync();
         submitJob(asyncContext);
-        logger.info("Exiting URL Download Servlet doGet() after submitJob()");
     }
 
     private static void submitJob(AsyncContext asyncContext) {
-        logger.info("Hit submitJob() in URL Download Servlet");
         jobs.add(asyncContext);
     }
 
@@ -109,7 +105,7 @@ public class AsyncURLDownloadServlet extends HttpServlet {
         return jobs.poll(1, TimeUnit.SECONDS);
     }
 
-     static class JobsExecutor implements Runnable {
+    static class JobsExecutor implements Runnable {
         @Override
         public void run() {
             while (true) {
