@@ -25,10 +25,12 @@ import java.util.concurrent.*;
 public class NonBlockingServlet extends HttpServlet {
     private static BlockingQueue<AsyncContext> jobs = new ArrayBlockingQueue<>(100);
     private ExecutorService executorService;
+    private static CloseableHttpAsyncClient httpAsyncClient;
 
     @Override
     public void init() throws ServletException {
         int numberOfThreads = 2;
+        httpAsyncClient = HttpAsyncClients.createDefault();
         executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
                 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<Runnable>(),
@@ -59,6 +61,12 @@ public class NonBlockingServlet extends HttpServlet {
     @Override
     public void destroy() {
         executorService.shutdownNow();
+        try {
+            httpAsyncClient.close();
+        }
+        catch (IOException e) {
+            throw new RuntimeException();
+        }
     }
 
     private static void submitJob(AsyncContext asyncContext) {
@@ -98,7 +106,6 @@ public class NonBlockingServlet extends HttpServlet {
 
     private static void runJob(AsyncContext asyncContext) throws IOException {
         String downloadURL = asyncContext.getRequest().getParameter("url");
-        CloseableHttpAsyncClient httpAsyncClient = HttpAsyncClients.createDefault();
         HttpAsyncRequestProducer httpAsyncRequestProducer = HttpAsyncMethods.createGet(downloadURL);
         PrintWriter out = asyncContext.getResponse().getWriter();
         try {
@@ -116,7 +123,6 @@ public class NonBlockingServlet extends HttpServlet {
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            httpAsyncClient.close();
             asyncContext.complete();
         }
     }
