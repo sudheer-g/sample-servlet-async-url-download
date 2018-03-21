@@ -15,17 +15,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.concurrent.TimeUnit;
 
 @WebServlet(name = "blockingServlet", urlPatterns = "/blocking")
 public class SampleBlockingServlet extends HttpServlet{
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        runJob(req.getParameter("url"));
+        runJob(req.getParameter("url"), resp);
         PrintWriter out = resp.getWriter();
         out.println("Returned after receiving data OK");
 
     }
-    private static void runJob(String downloadURL) throws IOException{
+    private static void runJob(String downloadURL, HttpServletResponse response) throws IOException{
         CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
         HttpGet httpget = new HttpGet(downloadURL);
         HttpResponse httpResponse;
@@ -38,7 +39,13 @@ public class SampleBlockingServlet extends HttpServlet{
                         .getContent()));
                 String line;
                 while ((line = br.readLine())!= null) {
-                    System.out.println(line);
+                    response.getWriter().println(line);
+                    try {
+                        Thread.sleep(1000);
+                    }
+                    catch (InterruptedException e) {
+                        throw new RuntimeException();
+                    }
                 }
             }
             else {

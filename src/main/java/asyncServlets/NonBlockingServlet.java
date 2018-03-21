@@ -2,6 +2,7 @@ package asyncServlets;
 
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
+import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.nio.IOControl;
@@ -9,6 +10,9 @@ import org.apache.http.nio.client.methods.AsyncCharConsumer;
 import org.apache.http.nio.client.methods.HttpAsyncMethods;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.protocol.HttpContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 
 import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
@@ -26,11 +30,13 @@ public class NonBlockingServlet extends HttpServlet {
     private static BlockingQueue<AsyncContext> jobs = new ArrayBlockingQueue<>(100);
     private ExecutorService executorService;
     private static CloseableHttpAsyncClient httpAsyncClient;
+    private static Logger logger = LogManager.getLogger();
 
     @Override
     public void init() throws ServletException {
         int numberOfThreads = 2;
         httpAsyncClient = HttpAsyncClients.createDefault();
+        httpAsyncClient.start();
         executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
                 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<Runnable>(),
@@ -63,8 +69,7 @@ public class NonBlockingServlet extends HttpServlet {
         executorService.shutdownNow();
         try {
             httpAsyncClient.close();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException();
         }
     }
@@ -79,25 +84,19 @@ public class NonBlockingServlet extends HttpServlet {
 
 
     static class ResponseConsumer extends AsyncCharConsumer<Boolean> {
-
         private PrintWriter out;
-
         ResponseConsumer(PrintWriter out) {
             this.out = out;
         }
-
         @Override
         protected void onCharReceived(CharBuffer charBuffer, IOControl ioControl) throws IOException {
             while (charBuffer.hasRemaining()) {
                 out.print(charBuffer.get());
             }
         }
-
         @Override
         protected void onResponseReceived(HttpResponse httpResponse) throws HttpException, IOException {
-
         }
-
         @Override
         protected Boolean buildResult(HttpContext httpContext) throws Exception {
             return Boolean.TRUE;
@@ -109,21 +108,29 @@ public class NonBlockingServlet extends HttpServlet {
         HttpAsyncRequestProducer httpAsyncRequestProducer = HttpAsyncMethods.createGet(downloadURL);
         PrintWriter out = asyncContext.getResponse().getWriter();
         try {
-            httpAsyncClient.start();
             Future<Boolean> future = httpAsyncClient.execute(httpAsyncRequestProducer,
-                    new ResponseConsumer(out), null);
+                    new ResponseConsumer(out), new FutureCallback<Boolean>() {
+                        @Override
+                        public void completed(Boolean result) {
+                            logger.info(Thread.currentThread().getName() + " Request Successful");
+                            asyncContext.complete();
+                        }
 
-            Boolean result = future.get();
-            if (result != null && result.booleanValue()) {
-                System.out.println("Request successfully executed");
-            } else {
-                System.out.println("Request failed");
-            }
+                        @Override
+                        public void failed(Exception ex) {
+                            logger.info(Thread.currentThread().getName() + " Request Successful");
+                            asyncContext.complete();
+                        }
+
+                        @Override
+                        public void cancelled() {
+                            asyncContext.complete();
+                        }
+
+                    });
 
         } catch (Exception e) {
             throw new RuntimeException(e);
-        } finally {
-            asyncContext.complete();
         }
     }
 
