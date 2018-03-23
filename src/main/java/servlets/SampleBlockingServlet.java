@@ -5,7 +5,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
-
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -15,18 +14,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.concurrent.TimeUnit;
 
 @WebServlet(name = "blockingServlet", urlPatterns = "/blocking")
-public class SampleBlockingServlet extends HttpServlet{
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        runJob(req.getParameter("url"), resp);
-        PrintWriter out = resp.getWriter();
-        out.println("Returned after receiving data OK");
-
-    }
-    private static void runJob(String downloadURL, HttpServletResponse response) throws IOException{
+public class SampleBlockingServlet extends HttpServlet {
+    private static void runJob(String downloadURL, HttpServletResponse response) throws IOException {
         CloseableHttpClient closeableHttpClient = HttpClients.createDefault();
         HttpGet httpget = new HttpGet(downloadURL);
         HttpResponse httpResponse;
@@ -34,37 +25,40 @@ public class SampleBlockingServlet extends HttpServlet{
         try {
             httpResponse = closeableHttpClient.execute(httpget);
             int responseStatus = httpResponse.getStatusLine().getStatusCode();
-            if(responseStatus >= 200 && responseStatus < 300) {
+            if (responseStatus >= 200 && responseStatus < 300) {
                 br = new BufferedReader(new InputStreamReader(httpResponse.getEntity()
                         .getContent()));
                 String line;
-                while ((line = br.readLine())!= null) {
+                while ((line = br.readLine()) != null) {
                     response.getWriter().println(line);
                     try {
                         Thread.sleep(1000);
-                    }
-                    catch (InterruptedException e) {
+                    } catch (InterruptedException e) {
                         throw new RuntimeException();
                     }
                 }
-            }
-            else {
+            } else {
                 System.out.println("Unexpected Response Code: " + responseStatus);
             }
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-        finally {
-            if(br != null) {
+        } finally {
+            if (br != null) {
                 try {
                     br.close();
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     throw new IOException();
                 }
             }
             closeableHttpClient.close();
         }
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        runJob(req.getParameter("url"), resp);
+        PrintWriter out = resp.getWriter();
+        out.println("Returned after receiving data OK");
+
     }
 }
