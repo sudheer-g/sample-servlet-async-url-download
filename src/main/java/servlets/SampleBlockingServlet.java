@@ -15,6 +15,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
+/**
+ * This servlet is used to test the NIO Servlet's nature by deliberately slowing down Network
+  I/O.
+ */
+
 @WebServlet(name = "blockingServlet", urlPatterns = "/blocking")
 public class SampleBlockingServlet extends HttpServlet {
     private static void runJob(String downloadURL, HttpServletResponse response) throws IOException {

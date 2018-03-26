@@ -27,14 +27,13 @@ import java.util.concurrent.*;
 
 @WebServlet(name = "NonBlocking", urlPatterns = "/nonBlocking", asyncSupported = true)
 public class NonBlockingServlet extends HttpServlet {
-    private static BlockingQueue<AsyncContext> jobs = new ArrayBlockingQueue<>(100);
     private static CloseableHttpAsyncClient httpAsyncClient;
     private static Logger logger = LogManager.getLogger();
     // Create I/O reactor configuration
     private IOReactorConfig ioReactorConfig = IOReactorConfig.custom()
             .setIoThreadCount(1)
-            .setConnectTimeout(30000)
-            .setSoTimeout(30000)
+            .setConnectTimeout(200000)
+            .setSoTimeout(200000)
             .build();
 
 
@@ -47,6 +46,7 @@ public class NonBlockingServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         final AsyncContext asyncContext = req.startAsync();
+        asyncContext.setTimeout(900000000);
         runJob(asyncContext);
         logger.info("Exited run job");
     }
@@ -61,11 +61,14 @@ public class NonBlockingServlet extends HttpServlet {
     }
 
     private static void runJob(AsyncContext asyncContext) throws IOException {
+        if(asyncContext == null) {
+            throw new IllegalStateException();
+        }
         String downloadURL = asyncContext.getRequest().getParameter("url");
         HttpAsyncRequestProducer httpAsyncRequestProducer = HttpAsyncMethods.createGet(downloadURL);
         PrintWriter out = asyncContext.getResponse().getWriter();
         try {
-            Future<Boolean> future = httpAsyncClient.execute(httpAsyncRequestProducer,
+            httpAsyncClient.execute(httpAsyncRequestProducer,
                     new ResponseConsumer(out), new FutureCallback<Boolean>() {
                         @Override
                         public void completed(Boolean result) {
@@ -81,19 +84,20 @@ public class NonBlockingServlet extends HttpServlet {
 
                         @Override
                         public void cancelled() {
+                            logger.warn("Operation \"{}\" cancelled", asyncContext.getRequest().getParameter("url"));
                             asyncContext.complete();
                         }
 
                     });
 
         } catch (Exception e) {
+            logger.info("Hit exception");
             throw new RuntimeException(e);
         }
     }
 
     static class ResponseConsumer extends AsyncCharConsumer<Boolean> {
         private PrintWriter out;
-
         ResponseConsumer(PrintWriter out) {
             this.out = out;
         }
@@ -102,6 +106,7 @@ public class NonBlockingServlet extends HttpServlet {
         protected void onCharReceived(CharBuffer charBuffer, IOControl ioControl) throws IOException {
             while (charBuffer.hasRemaining()) {
                 out.print(charBuffer.get());
+                out.flush();
             }
         }
 
