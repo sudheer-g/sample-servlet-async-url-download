@@ -23,7 +23,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.CharBuffer;
-import java.util.concurrent.*;
 
 @WebServlet(name = "NonBlocking", urlPatterns = "/nonBlocking", asyncSupported = true)
 public class NonBlockingServlet extends HttpServlet {
@@ -48,7 +47,6 @@ public class NonBlockingServlet extends HttpServlet {
         final AsyncContext asyncContext = req.startAsync();
         asyncContext.setTimeout(900000000);
         runJob(asyncContext);
-        logger.info("Exited run job");
     }
 
     @Override
@@ -61,7 +59,7 @@ public class NonBlockingServlet extends HttpServlet {
     }
 
     private static void runJob(AsyncContext asyncContext) throws IOException {
-        if(asyncContext == null) {
+        if (asyncContext == null) {
             throw new IllegalStateException();
         }
         String downloadURL = asyncContext.getRequest().getParameter("url");
@@ -91,13 +89,13 @@ public class NonBlockingServlet extends HttpServlet {
                     });
 
         } catch (Exception e) {
-            logger.info("Hit exception");
             throw new RuntimeException(e);
         }
     }
 
     static class ResponseConsumer extends AsyncCharConsumer<Boolean> {
         private PrintWriter out;
+
         ResponseConsumer(PrintWriter out) {
             this.out = out;
         }
