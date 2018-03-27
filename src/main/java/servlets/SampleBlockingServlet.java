@@ -16,7 +16,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
 /**
- * This servlet is used to test the NIO Servlet's nature by deliberately slowing down Network
+ * This servlet is used to test the NIO Servlet's throughput by deliberately slowing down Network
   I/O.
  */
 
@@ -28,6 +28,7 @@ public class SampleBlockingServlet extends HttpServlet {
         HttpResponse httpResponse;
         BufferedReader br = null;
         try {
+            System.out.println(Integer.getInteger("waitTime"));
             httpResponse = closeableHttpClient.execute(httpget);
             int responseStatus = httpResponse.getStatusLine().getStatusCode();
             if (responseStatus >= 200 && responseStatus < 300) {
@@ -37,7 +38,7 @@ public class SampleBlockingServlet extends HttpServlet {
                 while ((line = br.readLine()) != null) {
                     response.getWriter().println(line);
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(Integer.getInteger("waitTime", 10));
                     } catch (InterruptedException e) {
                         throw new RuntimeException();
                     }

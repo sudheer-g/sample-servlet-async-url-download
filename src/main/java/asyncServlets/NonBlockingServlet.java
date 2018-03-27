@@ -30,7 +30,7 @@ public class NonBlockingServlet extends HttpServlet {
     private static Logger logger = LogManager.getLogger();
     // Create I/O reactor configuration
     private IOReactorConfig ioReactorConfig = IOReactorConfig.custom()
-            .setIoThreadCount(1)
+            .setIoThreadCount(2)
             .setConnectTimeout(200000)
             .setSoTimeout(200000)
             .build();
@@ -76,13 +76,13 @@ public class NonBlockingServlet extends HttpServlet {
 
                         @Override
                         public void failed(Exception ex) {
-                            logger.info(Thread.currentThread().getName() + " Request Successful");
+                            logger.info(Thread.currentThread().getName() + " Request Failed: {}", downloadURL);
                             asyncContext.complete();
                         }
 
                         @Override
                         public void cancelled() {
-                            logger.warn("Operation \"{}\" cancelled", asyncContext.getRequest().getParameter("url"));
+                            logger.warn("Operation \"{}\" cancelled", downloadURL);
                             asyncContext.complete();
                         }
 
